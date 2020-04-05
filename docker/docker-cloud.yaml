@@ -26,13 +26,13 @@ services:
     image: elasticsearch:7.6.2
     environment:
       - discovery.type=single-node
+    volumes:
+      - exlinetr_elasticsearch_data:/usr/share/elasticsearch/data
     networks:
       - exlinetr_infrustructure_logging_network
 
   kibana:
     image: kibana:7.6.2
-    ports: 
-      - "5601:5601"
     deploy:
       replicas: 1
       restart_policy:
@@ -45,14 +45,19 @@ services:
         - "traefik.http.routers.kibana.entrypoints=web"
         - "traefik.http.services.kibana.loadbalancer.server.port=5601"
         - "traefik.http.services.kibana.loadbalancer.server.scheme=http"
+        - "traefik.http.middlewares.kibana-auth.basicauth.users=furkaandogan:{SHA}90St/4Twu+l5Y9zfJQNDprYI+Ek="
+        - "traefik.http.routers.kibana.middlewares=kibana-auth"
     environment: 
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     depends_on: 
       - elasticsearch
     networks:
       - exlinetr_infrustructure_logging_network
+      - traefik_network
 
 networks:
+  traefik_network:
+    external: true
   exlinetr_infrustructure_logging_network:
     name: exlinetr_infrustructure_logging_network
 
