@@ -7,8 +7,16 @@ services:
       replicas: 1
       restart_policy:
         condition: on-failure
-    ports: 
-      - "5170:5170"
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik_network"
+        - "traefik.tcp.routers.fluentbit.service=fluentbit"
+        - "traefik.tcp.routers.fluentbit.rule=HostSNI(`fluentbit.exlinetr.com`)"
+        # - "traefik.tcp.routers.fluentbit.tls=true"
+        - "traefik.tcp.services.fluentbit.loadbalancer.server.port=5170"
+        - "traefik.tcp.services.fluentbit.loadbalancer.terminationdelay=100"
+    # ports: 
+    #   - "5170:5170"
     configs:
       - source: fluentbit_config
         target: /var/conf/fluentbit.conf
@@ -17,6 +25,8 @@ services:
     environment: 
       - ELASTIC_SEARCH_HOST=elasticsearch
       - ELASTIC_SEARCH_PORT=9200
+      - ELASTIC_USERNMAE=furkaandogan
+      - ELASTIC_PASSWORD=frkn5268.,
     depends_on: 
       - elasticsearch
     networks:
@@ -24,12 +34,28 @@ services:
 
   elasticsearch:
     image: elasticsearch:7.6.2
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=traefik_network"
+        - "traefik.http.routers.elasticsearch.service=elasticsearch"
+        - "traefik.http.routers.elasticsearch.rule=Host(`elasticsearch.exlinetr.com`)"
+        - "traefik.http.routers.elasticsearch.entrypoints=web"
+        - "traefik.http.services.elasticsearch.loadbalancer.server.port=9200"
+        - "traefik.http.services.elasticsearch.loadbalancer.server.scheme=http"
+        - "traefik.http.middlewares.elasticsearch-auth.basicauth.users=furkaandogan:{SHA}90St/4Twu+l5Y9zfJQNDprYI+Ek="
+        - "traefik.http.routers.elasticsearch.middlewares=elasticsearch-auth"
     environment:
       - discovery.type=single-node
     volumes:
-      - exlinetr_elasticsearch_data:/usr/share/elasticsearch/data
+      - /mnt/storage/elasticsearch/data:/usr/share/elasticsearch/data
+      - /mnt/storage/elasticsearch/config:/usr/share/elasticsearch/config
     networks:
       - exlinetr_infrustructure_logging_network
+      - traefik_network
 
   kibana:
     image: kibana:7.6.2
